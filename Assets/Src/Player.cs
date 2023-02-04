@@ -3,24 +3,56 @@ using Unity.Netcode;
 
 public class Player : NetworkBehaviour
 {
+    public int health = 100;
+    public int[] attackScheme;
+    public int[] defenceScheme; // 1 - часть тела не защищена, 0 - защищена.
+
     public override void OnNetworkSpawn()
     {
-        if (!IsServer && IsOwner)
-            TestServerRpc(0, NetworkObjectId);
+        Debug.Log($"Player.OnNetworkSpawn, Id: {NetworkObjectId}, IsLocal: {IsLocalPlayer}");
+
+        // Debug.Log(string.Join(string.Empty, attackScheme));
+        // Debug.Log(string.Join(string.Empty, defenceScheme));
     }
 
-    [ClientRpc]
-    void TestClientRpc(int value, ulong sourceNetworkObjectId)
+    void Start()
     {
-        Debug.Log($"Client Received the RPC #{value} on NetworkObject #{sourceNetworkObjectId}");
-        if (IsOwner)
-            TestServerRpc(value + 1, sourceNetworkObjectId);
+        Debug.Log($"Player.Start, Id: {NetworkObjectId}, IsLocal: {IsLocalPlayer}");
+
+        if (IsLocalPlayer)
+        {
+            GetReadyForRound();
+        }
     }
 
-    [ServerRpc]
-    void TestServerRpc(int value, ulong sourceNetworkObjectId)
+    private void CreateRandomAttackScheme()
     {
-        Debug.Log($"Server Received the RPC #{value} on NetworkObject #{sourceNetworkObjectId}");
-        TestClientRpc(value, sourceNetworkObjectId);
+        attackScheme = new[] {0, 0, 0, 0, 0, 0, 0, 0};
+
+        for (int i = 0; i < 4; i++)
+        {
+            int bodyPartIndex = Random.Range(0, 7);
+            attackScheme[bodyPartIndex]++;
+        }
+    }
+
+    private void CreateRandomDefenceScheme()
+    {
+        defenceScheme = new[] {1, 1, 1, 1, 1, 1, 1, 1};
+
+        for (int i = 0; i < 4; i++)
+        {
+            int bodyPartIndex = Random.Range(0, 7);
+            defenceScheme[bodyPartIndex] = 0;
+        }
+    }
+
+    public void GetReadyForRound()
+    {
+        CreateRandomAttackScheme();
+        CreateRandomDefenceScheme();
+
+        Game game = GameObject.Find("Game").GetComponent<Game>();
+        game.ReadyServerRpc(attackScheme, defenceScheme, health);
     }
 }
