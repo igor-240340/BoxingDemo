@@ -10,15 +10,13 @@ public class Game : NetworkBehaviour
     private ulong[] clientIds = new ulong[2];
     private int[] healths = new int[2];
 
-    private void Start()
-    {
-    }
-
     [ServerRpc(RequireOwnership = false)]
-    public void ReadyServerRpc(int[] attackScheme, int[] defenceScheme, int health, ServerRpcParams serverRpcParams = default)
+    public void ReadyServerRpc(int[] attackScheme, int[] defenceScheme, int health,
+        ServerRpcParams serverRpcParams = default)
     {
         var clientId = serverRpcParams.Receive.SenderClientId;
-        Debug.Log($"Ready from {clientId} with attack scheme: {string.Join(string.Empty, attackScheme)}, defence scheme: {string.Join(string.Empty, defenceScheme)} and health: {health}");
+        Debug.Log(
+            $"Ready from {clientId} with attack scheme: {string.Join(string.Empty, attackScheme)}, defence scheme: {string.Join(string.Empty, defenceScheme)} and health: {health}");
         Debug.Log($"pos: {pos}");
 
         pos++;
@@ -39,10 +37,10 @@ public class Game : NetworkBehaviour
         if (pos == 1)
         {
             pos = -1;
-            
+
             healths[1] -= AttackAndReturnDamage(attackSchemes[0], defenceSchemes[1]);
             healths[0] -= AttackAndReturnDamage(attackSchemes[1], defenceSchemes[0]);
-            
+
             if (healths[0] <= 0 || healths[1] <= 0)
             {
                 Debug.Log("Game finished");

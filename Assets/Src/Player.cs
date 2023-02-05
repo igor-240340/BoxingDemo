@@ -17,12 +17,12 @@ public class Player : NetworkBehaviour
 
     void Start()
     {
-        Debug.Log($"Player.Start, Id: {NetworkObjectId}, IsLocal: {IsLocalPlayer}");
+        /*Debug.Log($"Player.Start, Id: {NetworkObjectId}, IsLocal: {IsLocalPlayer}");
 
         if (IsLocalPlayer)
         {
             GetReadyForRound();
-        }
+        }*/
     }
 
     private void CreateRandomAttackScheme()
