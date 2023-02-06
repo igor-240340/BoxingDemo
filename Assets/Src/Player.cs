@@ -11,18 +11,22 @@ public class Player : NetworkBehaviour
     {
         Debug.Log($"Player.OnNetworkSpawn, Id: {NetworkObjectId}, IsLocal: {IsLocalPlayer}");
 
-        // Debug.Log(string.Join(string.Empty, attackScheme));
-        // Debug.Log(string.Join(string.Empty, defenceScheme));
+        Debug.Log(string.Join(string.Empty, attackScheme));
+        Debug.Log(string.Join(string.Empty, defenceScheme));
     }
 
     void Start()
     {
-        /*Debug.Log($"Player.Start, Id: {NetworkObjectId}, IsLocal: {IsLocalPlayer}");
+        Debug.Log($"Player.Start, Id: {NetworkObjectId}, IsLocal: {IsLocalPlayer}");
 
         if (IsLocalPlayer)
         {
-            GetReadyForRound();
-        }*/
+            // GetReadyForRound();
+        }
+
+        // Признак, что оба клиента подключились.
+        if (IsHost && !IsLocalPlayer)
+            GameObject.Find("CountTimer").GetComponent<CountdownTimer>().StartTimerClientRpc();
     }
 
     private void CreateRandomAttackScheme()

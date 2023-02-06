@@ -1,7 +1,11 @@
+using System;
 using System.Collections;
-using UnityEngine;
 
-public class FightAnimator : MonoBehaviour
+using UnityEngine;
+using Unity.Netcode;
+using Random = UnityEngine.Random;
+
+public class FightAnimator : NetworkBehaviour
 {
     [SerializeField] private GameObject redGuy;
     [SerializeField] private GameObject blueGuy;
@@ -9,8 +13,15 @@ public class FightAnimator : MonoBehaviour
     private Animator redAnim;
     private Animator blueAnim;
 
-    private int[] attackScheme;
-    private int[] defenceScheme;
+    public int[] attackSchemeA;
+    public int[] defenceSchemeB;
+
+    public int[] attackSchemeB;
+    public int[] defenceSchemeA;
+
+    private void Start()
+    {
+    }
 
     private string[] attackAnims =
     {
@@ -38,72 +49,96 @@ public class FightAnimator : MonoBehaviour
 
     private string noDefenceAnim = "hd_front_B";
 
-    void Start()
+    private int cnt;
+
+    [ClientRpc]
+    public void StartAnimationClientRpc(int[] attackSchemeA, int[] defenceSchemeA, int[] attackSchemeB, int[] defenceSchemeB)
     {
+        Debug.Log($"StartAnimationClientRpc. IsLocal: {IsLocalPlayer}");
+
+        this.attackSchemeA = attackSchemeA;
+        this.defenceSchemeA = defenceSchemeA;
+        
+        this.attackSchemeB = attackSchemeB;
+        this.defenceSchemeB = defenceSchemeB;
+        
+        cnt = 2;
+        
         redAnim = redGuy.GetComponent<Animator>();
         blueAnim = blueGuy.GetComponent<Animator>();
 
-        CreateRandomAttackScheme();
-        CreateRandomDefenceScheme();
+        // CreateRandomAttackScheme();
+        // CreateRandomDefenceScheme();
 
-        Debug.Log($"attack: {string.Join(string.Empty, attackScheme)}");
-        Debug.Log($"defence: {string.Join(string.Empty, defenceScheme)}");
+        // Debug.Log($"attack: {string.Join(string.Empty, attackSchemeA)}");
+        // Debug.Log($"defence: {string.Join(string.Empty, defenceSchemeB)}");
+
+        StartCoroutine(PerformFightAB(this.attackSchemeA, this.defenceSchemeB));
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            StartCoroutine(PerformFight());
-        }
     }
 
-    IEnumerator PerformFight()
+    IEnumerator PerformFightAB(int[] attackSchemeA, int[] defenceSchemeB)
     {
         for (int i = 0; i < 8; i++)
         {
-            if (attackScheme[i] == 0)
+            if (attackSchemeA[i] == 0)
                 continue;
 
             // Debug.Log($"Has started attack/defence for {i}");
 
             redAnim.Play(attackAnims[i], 0);
-            blueAnim.Play(defenceScheme[i] == 0 ? defenceAnims[i] : noDefenceAnim, 0);
+            blueAnim.Play(defenceSchemeB[i] == 0 ? defenceAnims[i] : noDefenceAnim, 0);
 
             yield return new WaitForSeconds(redAnim.GetCurrentAnimatorStateInfo(0).length);
             // Debug.Log($"Has finished attack/defence for {i}\n");
         }
+        
+        // Анимируем схему для второго
+        StartCoroutine(PerformFightBA(this.attackSchemeB, this.defenceSchemeA));
+    }
+    
+    IEnumerator PerformFightBA(int[] attackSchemeB, int[] defenceSchemeA)
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            if (attackSchemeB[i] == 0)
+                continue;
+
+            // Debug.Log($"Has started attack/defence for {i}");
+
+            blueAnim.Play(attackAnims[i], 0);
+            redAnim.Play(defenceSchemeA[i] == 0 ? defenceAnims[i] : noDefenceAnim, 0);
+
+            yield return new WaitForSeconds(redAnim.GetCurrentAnimatorStateInfo(0).length);
+            // Debug.Log($"Has finished attack/defence for {i}\n");
+        }
+        
+        gameObject.SetActive(false);
+        GameObject.Find("Game").GetComponent<Game>().AnimCompletedServerRpc();
     }
 
     private void CreateRandomAttackScheme()
     {
-        attackScheme = new[] {0, 0, 0, 0, 0, 0, 0, 0};
+        attackSchemeA = new[] {0, 0, 0, 0, 0, 0, 0, 0};
 
         for (int i = 0; i < 4; i++)
         {
             int bodyPartIndex = Random.Range(0, 7);
-            attackScheme[bodyPartIndex]++;
+            attackSchemeA[bodyPartIndex]++;
         }
     }
 
     private void CreateRandomDefenceScheme()
     {
-        defenceScheme = new[] {1, 1, 1, 1, 1, 1, 1, 1};
+        defenceSchemeB = new[] {1, 1, 1, 1, 1, 1, 1, 1};
 
         for (int i = 0; i < 4; i++)
         {
             int bodyPartIndex = Random.Range(0, 7);
-            defenceScheme[bodyPartIndex] = 0;
+            defenceSchemeB[bodyPartIndex] = 0;
         }
-    }
-    
-    public void OnDefencePrepareButtonClick(int bodyPartIndex)
-    {
-        Debug.Log($"Defence body part index: {bodyPartIndex}");
-    }
-    
-    public void OnAttackPrepareButtonClick(int bodyPartIndex)
-    {
-        Debug.Log($"Attack body part index: {bodyPartIndex}");
     }
 }
