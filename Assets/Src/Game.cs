@@ -47,9 +47,9 @@ public class Game : NetworkBehaviour
         if (pos == 1)
         {
             fightAnimator.SetActive(true);
-            fightAnimator.GetComponent<FightAnimator>().StartAnimationClientRpc(
+            /*fightAnimator.GetComponent<FightAnimator>().StartAnimationClientRpc(
                 attackSchemes[0], defenceSchemes[0],
-                attackSchemes[1], defenceSchemes[1]);
+                attackSchemes[1], defenceSchemes[1]);*/
 
             pos = -1;
         }

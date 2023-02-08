@@ -1,11 +1,10 @@
 using System;
 using System.Collections;
-
-using UnityEngine;
 using Unity.Netcode;
+using UnityEngine;
 using Random = UnityEngine.Random;
 
-public class FightAnimator : NetworkBehaviour
+public class FightAnimator : MonoBehaviour
 {
     [SerializeField] private GameObject redGuy;
     [SerializeField] private GameObject blueGuy;
@@ -13,15 +12,11 @@ public class FightAnimator : NetworkBehaviour
     private Animator redAnim;
     private Animator blueAnim;
 
-    public int[] attackSchemeA;
-    public int[] defenceSchemeB;
+    public int[] attackSchemeLocal;
+    public int[] defenceSchemeRemote;
 
-    public int[] attackSchemeB;
-    public int[] defenceSchemeA;
-
-    private void Start()
-    {
-    }
+    public int[] attackSchemeRemote;
+    public int[] defenceSchemeLocal;
 
     private string[] attackAnims =
     {
@@ -51,37 +46,67 @@ public class FightAnimator : NetworkBehaviour
 
     private int cnt;
 
-    [ClientRpc]
-    public void StartAnimationClientRpc(int[] attackSchemeA, int[] defenceSchemeA, int[] attackSchemeB, int[] defenceSchemeB)
-    {
-        Debug.Log($"StartAnimationClientRpc. IsLocal: {IsLocalPlayer}");
+    private Action animationCompleteCb = null;
 
-        this.attackSchemeA = attackSchemeA;
-        this.defenceSchemeA = defenceSchemeA;
-        
-        this.attackSchemeB = attackSchemeB;
-        this.defenceSchemeB = defenceSchemeB;
-        
+    private bool isLastFight;
+
+    private void Start()
+    {
+    }
+
+    private void OnEnable()
+    {
+    }
+
+    public void AnimateRound(RoundSpec roundSpec,
+        ulong clientId1, int health1, int[] attackScheme1, int[] defenceScheme1,
+        ulong clientId2, int health2, int[] attackScheme2, int[] defenceScheme2,
+        Action cb)
+    {
+        Debug.Log($"FightAnimator.AnimateRound. IsHost: {NetworkManager.Singleton.IsHost}");
+
+        Debug.Log($"roundSpec.isLast: {roundSpec.isLast}, number: {roundSpec.roundNumber}");
+
+        isLastFight = roundSpec.isLast;
+
+        animationCompleteCb = cb;
+
+        Debug.Log($"attackScheme1: {attackScheme1.Length}");
+
+        // Определяем, по какому индексу лежит локальный игрок.
+        if (clientId1 == NetworkManager.Singleton.LocalClientId)
+        {
+            attackSchemeLocal = attackScheme1;
+            defenceSchemeLocal = defenceScheme1;
+
+            attackSchemeRemote = attackScheme2;
+            defenceSchemeRemote = defenceScheme2;
+        }
+        else
+        {
+            attackSchemeLocal = attackScheme2;
+            defenceSchemeLocal = defenceScheme2;
+
+            attackSchemeRemote = attackScheme1;
+            defenceSchemeRemote = defenceScheme1;
+        }
+
         cnt = 2;
-        
+
         redAnim = redGuy.GetComponent<Animator>();
         blueAnim = blueGuy.GetComponent<Animator>();
 
-        // CreateRandomAttackScheme();
-        // CreateRandomDefenceScheme();
-
-        // Debug.Log($"attack: {string.Join(string.Empty, attackSchemeA)}");
-        // Debug.Log($"defence: {string.Join(string.Empty, defenceSchemeB)}");
-
-        StartCoroutine(PerformFightAB(this.attackSchemeA, this.defenceSchemeB));
+        StartCoroutine(AnimateLocalVsRemote(attackSchemeLocal, defenceSchemeRemote));
     }
 
     void Update()
     {
     }
 
-    IEnumerator PerformFightAB(int[] attackSchemeA, int[] defenceSchemeB)
+    IEnumerator AnimateLocalVsRemote(int[] attackSchemeA, int[] defenceSchemeB)
     {
+        Debug.Log("FightAnimator.AnimateLocalVsRemote");
+
         for (int i = 0; i < 8; i++)
         {
             if (attackSchemeA[i] == 0)
@@ -95,13 +120,15 @@ public class FightAnimator : NetworkBehaviour
             yield return new WaitForSeconds(redAnim.GetCurrentAnimatorStateInfo(0).length);
             // Debug.Log($"Has finished attack/defence for {i}\n");
         }
-        
+
         // Анимируем схему для второго
-        StartCoroutine(PerformFightBA(this.attackSchemeB, this.defenceSchemeA));
+        StartCoroutine(AnimateRemoteVsLocal(attackSchemeRemote, defenceSchemeLocal));
     }
-    
-    IEnumerator PerformFightBA(int[] attackSchemeB, int[] defenceSchemeA)
+
+    IEnumerator AnimateRemoteVsLocal(int[] attackSchemeB, int[] defenceSchemeA)
     {
+        Debug.Log("FightAnimator.AnimateRemoteVsLocal");
+
         for (int i = 0; i < 8; i++)
         {
             if (attackSchemeB[i] == 0)
@@ -115,30 +142,11 @@ public class FightAnimator : NetworkBehaviour
             yield return new WaitForSeconds(redAnim.GetCurrentAnimatorStateInfo(0).length);
             // Debug.Log($"Has finished attack/defence for {i}\n");
         }
-        
-        gameObject.SetActive(false);
-        GameObject.Find("Game").GetComponent<Game>().AnimCompletedServerRpc();
-    }
 
-    private void CreateRandomAttackScheme()
-    {
-        attackSchemeA = new[] {0, 0, 0, 0, 0, 0, 0, 0};
-
-        for (int i = 0; i < 4; i++)
-        {
-            int bodyPartIndex = Random.Range(0, 7);
-            attackSchemeA[bodyPartIndex]++;
-        }
-    }
-
-    private void CreateRandomDefenceScheme()
-    {
-        defenceSchemeB = new[] {1, 1, 1, 1, 1, 1, 1, 1};
-
-        for (int i = 0; i < 4; i++)
-        {
-            int bodyPartIndex = Random.Range(0, 7);
-            defenceSchemeB[bodyPartIndex] = 0;
-        }
+        // Если это не последний раунд,
+        // то сообщаем серверу о завершении анимации,
+        // чтобы получить от него сигнал подгтовки к следующему раунду.
+        if (!isLastFight)
+            animationCompleteCb();
     }
 }

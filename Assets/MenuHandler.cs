@@ -10,14 +10,6 @@ public class MenuHandler : MonoBehaviour
     {
     }
 
-    public void StartAsHost()
-    {
-        Debug.Log("StartAsHost");
-
-        NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
-        NetworkManager.Singleton.StartHost();
-    }
-
     public void StartAsClient()
     {
         Debug.Log("StartAsClient");
@@ -25,6 +17,14 @@ public class MenuHandler : MonoBehaviour
 
         GameObject.Find("MenuCanvas").SetActive(false);
         prepareCanvas.SetActive(true);
+    }
+
+    public void StartAsHost()
+    {
+        Debug.Log("StartAsHost");
+
+        NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
+        NetworkManager.Singleton.StartHost();
     }
 
     private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request,
