@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class PlayMenu : MonoBehaviour
 {
@@ -7,6 +8,13 @@ public class PlayMenu : MonoBehaviour
     [SerializeField] private GameObject singlePlayMenu;
     [SerializeField] private GameObject hostPlayMenu;
     [SerializeField] private GameObject connectPlayMenu;
+
+    [SerializeField] private GameObject firstButton;
+
+    private void OnEnable()
+    {
+        Debug.Log("MainMenu.OnEnable");
+    }
 
     void Start()
     {

@@ -1,8 +1,15 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class MainMenu : MonoBehaviour
 {
     [SerializeField] private GameObject playMenu;
+    [SerializeField] private GameObject firstButton;
+
+    private void OnEnable()
+    {
+        Debug.Log("MainMenu.OnEnable");
+    }
 
     void Start()
     {
@@ -22,7 +29,7 @@ public class MainMenu : MonoBehaviour
     {
         Application.Quit();
     }
-    
+
     private void DeactivateThisMenu()
     {
         gameObject.SetActive(false);
