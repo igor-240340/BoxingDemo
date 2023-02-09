@@ -17,12 +17,16 @@ public class HostPlayMenu : MonoBehaviour
     {
         DeactivateThisMenu();
         waitClientMenu.SetActive(true);
+
+        GameObject.Find("NewGame").GetComponent<NewGame>().LocalCharacterIndex = 0;
     }
 
     public void OnBlueButtonClick()
     {
         DeactivateThisMenu();
         waitClientMenu.SetActive(true);
+
+        GameObject.Find("NewGame").GetComponent<NewGame>().LocalCharacterIndex = 1;
     }
 
     public void OnBackButtonClick()

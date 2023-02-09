@@ -34,11 +34,15 @@ public class NewGame : NetworkBehaviour
     private bool prepTimerIsActive;
     private float elapsedSeconds;
     private float leftSeconds;
-    private int timerMaxSeconds = 10;
+    private int timerMaxSeconds = 20;
 
     private int animationCompleteCnt;
 
     private int currentRoundNumber = 1;
+
+    private int
+        localCharacterIndex =
+            -1; // Определяет индекс, по которому хостовый и обычный клиенты берут модели своих персонажей.
 
     void Start()
     {
@@ -79,18 +83,29 @@ public class NewGame : NetworkBehaviour
                 Debug.Log("Both clients has connected.");
 
                 cb(true);
-                PrepareForRoundClientRpc();
+                PrepareForRoundClientRpc(localCharacterIndex);
             }
         };
         NetworkManager.Singleton.StartHost();
     }
 
     [ClientRpc]
-    private void PrepareForRoundClientRpc()
+    private void PrepareForRoundClientRpc(int hostCharacterIndex = default)
     {
-        Debug.Log($"NewGame.PrepareForRoundClientRpc. clientId: {NetworkManager.Singleton.LocalClientId}, IsLocal: {IsLocalPlayer}");
+        Debug.Log(
+            $"NewGame.PrepareForRoundClientRpc. clientId: {NetworkManager.Singleton.LocalClientId}, IsLocal: {IsLocalPlayer}");
+
+        // Не хостовый клиент при первом вызове должен выбрать себе персонажа, противоположного хостовому.
+        // Если это хостовый клиент, то индекс у него уже инициализирован при создании игры.
+        if (!IsHost && localCharacterIndex == -1)
+        {
+            localCharacterIndex = hostCharacterIndex ^ 1;
+            fightAnimator.GetComponent<FightAnimator>().InitCharacter(localCharacterIndex);
+        }
 
         fightAnimator.SetActive(false);
+        prepareRoundMenu.SetActive(true);
+
         StartPrepTimer();
     }
 
@@ -100,8 +115,6 @@ public class NewGame : NetworkBehaviour
 
         elapsedSeconds = leftSeconds = 0;
         prepTimerIsActive = true;
-
-        prepareRoundMenu.SetActive(true);
     }
 
     private void StopPrepTimer()
@@ -112,7 +125,9 @@ public class NewGame : NetworkBehaviour
         prepareRoundMenu.GetComponent<PrepareRoundMenu>().timerText.GetComponent<TextMeshProUGUI>().text =
             "00:00";
 
-        ReadyForRoundServerRpc(CreateRandomAttackScheme(), CreateRandomDefenceScheme());
+        var attackScheme = prepareRoundMenu.GetComponent<PrepareRoundMenu>().attackScheme;
+        var defenceScheme = prepareRoundMenu.GetComponent<PrepareRoundMenu>().defenceScheme;
+        ReadyForRoundServerRpc(attackScheme, defenceScheme);
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -121,6 +136,8 @@ public class NewGame : NetworkBehaviour
     {
         ulong clientId = serverRpcParams.Receive.SenderClientId;
         Debug.Log($"NewGame.ReadyForFight. IsLocalClient: {NetworkManager.Singleton.LocalClientId == clientId}");
+        Debug.Log(
+            $"attackScheme: {string.Join(string.Empty, attackScheme)}, defenceScheme: {string.Join(string.Empty, defenceScheme)}");
 
         if (!players.ContainsKey(clientId))
             players.Add(clientId, new Player(clientId, attackScheme, defenceScheme));
@@ -144,7 +161,31 @@ public class NewGame : NetworkBehaviour
     private RoundSpec CalculateRound()
     {
         Debug.Log($"NewGame.CalculateRound. IsHost: {IsHost}");
-        return new RoundSpec(false, currentRoundNumber++);
+
+        Player[] ps = players.Values.ToArray();
+
+        int firstDamage = AttackAndReturnDamage(ps[1].attackScheme, ps[0].defenceScheme);
+        players[ps[0].clientId] = new Player(ps[0].clientId, ps[0].attackScheme, ps[0].defenceScheme,
+            ps[0].health - firstDamage);
+
+        int secondDamage = AttackAndReturnDamage(ps[0].attackScheme, ps[1].defenceScheme);
+        players[ps[1].clientId] = new Player(ps[1].clientId, ps[1].attackScheme, ps[1].defenceScheme,
+            ps[1].health - secondDamage);
+
+        bool isLastRound = ps[0].health - firstDamage <= 0 || ps[1].health - secondDamage <= 0;
+        return new RoundSpec(isLastRound, currentRoundNumber++);
+    }
+
+    private int AttackAndReturnDamage(int[] attackA, int[] defenceB)
+    {
+        int totalDamage = 0;
+
+        // Последовательно "атакуем" каждую часть тела.
+        // Если текущая часть тела - под защитой, то AttackPoints для неё множится на ноль.
+        for (int i = 0; i < 8; i++)
+            totalDamage += attackA[i] * defenceB[i];
+
+        return totalDamage;
     }
 
     [ClientRpc]
@@ -170,9 +211,9 @@ public class NewGame : NetworkBehaviour
         if (++animationCompleteCnt == 2)
         {
             animationCompleteCnt = 0;
-            
+
             Debug.Log("Both clients completed animation.");
-            
+
             PrepareForRoundClientRpc();
         }
     }
@@ -232,5 +273,14 @@ public class NewGame : NetworkBehaviour
         }
 
         return defenceScheme;
+    }
+
+    public int LocalCharacterIndex
+    {
+        set
+        {
+            localCharacterIndex = value;
+            fightAnimator.GetComponent<FightAnimator>().InitCharacter(localCharacterIndex);
+        }
     }
 }
