@@ -7,8 +7,8 @@ public class CustomButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
 {
     private TextMeshProUGUI text;
 
-    private Color defaultColor = new(0.9568627f, 0.6156863f, 0.2156863f);
-    private Color highlightedColor = Color.white;
+    private Color defaultColor = new(0.09019608f, 0.4784314f, 0.5686275f);
+    private Color highlightedColor = new(0.9176471f, 0.9294118f, 0.9019608f);
 
     private bool isSelected;
 

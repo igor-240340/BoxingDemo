@@ -1,5 +1,4 @@
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -27,16 +26,19 @@ public class PrepareRoundMenu : MonoBehaviour
 
     private void OnEnable()
     {
-        attackScheme = new[] {0, 0, 0, 0, 0, 0, 0, 0};
-        defenceScheme = new[] {1, 1, 1, 1, 1, 1, 1, 1};
+        Debug.Log("PrepareRoundMenu.OnEnable");
 
         hud.SetActive(true);
-
         roundNumberText.SetActive(false);
     }
 
     void Start()
     {
+        Debug.Log("PrepareRoundMenu.Start");
+
+        attackScheme = new[] {0, 0, 0, 0, 0, 0, 0, 0};
+        defenceScheme = new[] {1, 1, 1, 1, 1, 1, 1, 1};
+
         InstantiateDefenceButtons();
         InstantiateAttackButtons();
     }

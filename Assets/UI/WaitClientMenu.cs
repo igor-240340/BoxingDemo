@@ -1,5 +1,4 @@
 using UnityEngine;
-using Unity.Netcode;
 
 public class WaitClientMenu : MonoBehaviour
 {
@@ -23,6 +22,8 @@ public class WaitClientMenu : MonoBehaviour
 
     public void OnBackButtonClick()
     {
+        GameObject.Find("NewGame").GetComponent<NewGame>().StopHost();
+
         DeactivateThisMenu();
         hostPlayMenu.SetActive(true);
     }

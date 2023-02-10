@@ -67,17 +67,29 @@ public class FightAnimator : MonoBehaviour
 
     public void InitCharacter(int localCharacterIndex)
     {
+        DestroyCurrentCharacter();
+
         // Создаем и позиционируем локального персонажа.
-        localCharacter = Instantiate(characterPrefabs[localCharacterIndex], new Vector3(-0.5f, 0, 3),
-            Quaternion.Euler(0, 90, 0));
+        localCharacter = Instantiate(characterPrefabs[localCharacterIndex], new Vector3(-0.5f, 0, 3), Quaternion.Euler(0, 90, 0));
         localAnim = localCharacter.GetComponent<Animator>();
         localCharacter.transform.SetParent(gameObject.transform);
 
         // Создаем и позиционируем удаленного персонажа.
-        remoteCharacter = Instantiate(characterPrefabs[localCharacterIndex ^ 1], new Vector3(0.5f, 0, 3),
-            Quaternion.Euler(0, -90, 0));
+        remoteCharacter = Instantiate(characterPrefabs[localCharacterIndex ^ 1], new Vector3(0.5f, 0, 3), Quaternion.Euler(0, -90, 0));
         remoteAnim = remoteCharacter.GetComponent<Animator>();
         remoteCharacter.transform.SetParent(gameObject.transform);
+    }
+
+    private void DestroyCurrentCharacter()
+    {
+        if (localCharacter == null && remoteCharacter == null)
+        {
+            Debug.Log("FightAnimator.DestroyCurrentCharacter");
+            return;
+        }
+
+        Destroy(localCharacter);
+        Destroy(remoteCharacter);
     }
 
     private void Start()

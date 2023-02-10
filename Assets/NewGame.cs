@@ -73,7 +73,6 @@ public class NewGame : NetworkBehaviour
         Debug.Log("NewGame.StartAsHost");
 
         NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
-
         NetworkManager.Singleton.OnClientConnectedCallback += clientId =>
         {
             Debug.Log("NewGame.OnClientConnectedOnHost");
@@ -87,6 +86,12 @@ public class NewGame : NetworkBehaviour
             }
         };
         NetworkManager.Singleton.StartHost();
+    }
+
+    public void StopHost()
+    {
+        Debug.Log("NewGame.StopHost");
+        NetworkManager.Singleton.Shutdown();
     }
 
     [ClientRpc]
