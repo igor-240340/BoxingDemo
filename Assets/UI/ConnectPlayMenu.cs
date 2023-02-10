@@ -1,9 +1,12 @@
 using UnityEngine;
 
-public class ConnectPlayMenu : MonoBehaviour
+public class ConnectPlayMenu : MonoBehaviour, Resettable
 {
     [SerializeField] private GameObject playMenu;
-    [SerializeField] private GameObject waitHostMenu;
+    [SerializeField] private GameObject waitForHostMenu;
+    
+    [SerializeField] public GameObject ipInput;
+    [SerializeField] public GameObject portInput;
     
     void Start()
     {
@@ -16,7 +19,7 @@ public class ConnectPlayMenu : MonoBehaviour
     public void OnConnectButtonClick()
     {
         DeactivateThisMenu();
-        waitHostMenu.SetActive(true);
+        waitForHostMenu.SetActive(true);
     }
     
     public void OnBackButtonClick()
@@ -27,6 +30,13 @@ public class ConnectPlayMenu : MonoBehaviour
 
     private void DeactivateThisMenu()
     {
+        gameObject.SetActive(false);
+    }
+
+    public void ResetToDefault()
+    {
+        Debug.Log("ConnectPlayMenu.ResetToDefault");
+        
         gameObject.SetActive(false);
     }
 }

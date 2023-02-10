@@ -1,9 +1,9 @@
 using UnityEngine;
 
-public class SinglePlayMenu : MonoBehaviour
+public class SinglePlayMenu : MonoBehaviour, Resettable
 {
     [SerializeField] private GameObject playMenu;
-    [SerializeField] private GameObject prepareMenu;
+    [SerializeField] private GameObject prepareForRoundMenu;
 
     void Start()
     {
@@ -31,6 +31,13 @@ public class SinglePlayMenu : MonoBehaviour
 
     private void DeactivateThisMenu()
     {
+        gameObject.SetActive(false);
+    }
+
+    public void ResetToDefault()
+    {
+        Debug.Log("SinglePlayMenu.ResetToDefault");
+        
         gameObject.SetActive(false);
     }
 }

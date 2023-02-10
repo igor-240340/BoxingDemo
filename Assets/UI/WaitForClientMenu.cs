@@ -1,20 +1,12 @@
 using UnityEngine;
 
-public class WaitClientMenu : MonoBehaviour
+public class WaitForClientMenu : MonoBehaviour, Resettable
 {
     [SerializeField] private GameObject hostPlayMenu;
 
-    void Start()
-    {
-    }
-
-    void Update()
-    {
-    }
-
     private void OnEnable()
     {
-        GameObject.Find("NewGame").GetComponent<NewGame>().StartAsHost(res =>
+        GameObject.Find("Game").GetComponent<Game>().StartAsHost(res =>
         {
             if (res) DeactivateThisMenu();
         });
@@ -22,7 +14,7 @@ public class WaitClientMenu : MonoBehaviour
 
     public void OnBackButtonClick()
     {
-        GameObject.Find("NewGame").GetComponent<NewGame>().StopHost();
+        GameObject.Find("Game").GetComponent<Game>().Disconnect(false);
 
         DeactivateThisMenu();
         hostPlayMenu.SetActive(true);
@@ -30,6 +22,13 @@ public class WaitClientMenu : MonoBehaviour
 
     private void DeactivateThisMenu()
     {
+        gameObject.SetActive(false);
+    }
+
+    public void ResetToDefault()
+    {
+        Debug.Log("WaitForClientMenu.ResetToDefault");
+
         gameObject.SetActive(false);
     }
 }

@@ -4,11 +4,14 @@ using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 
-public class FightAnimator : MonoBehaviour
+public class FightAnimator : MonoBehaviour, Resettable
 {
+    [SerializeField] private GameObject pauseMenu;
+    
     [SerializeField] private GameObject localHPText;
     [SerializeField] private GameObject remoteHPText;
     [SerializeField] private GameObject roundNumberText;
+    [SerializeField] private GameObject menuEscText;
     [SerializeField] private GameObject[] characterPrefabs;
 
     private GameObject localCharacter;
@@ -60,9 +63,12 @@ public class FightAnimator : MonoBehaviour
     private int localHP;
     private int remoteHP;
 
+    private Coroutine currentCoroutine;
+
     private void OnEnable()
     {
         roundNumberText.SetActive(true);
+        menuEscText.SetActive(false);
     }
 
     public void InitCharacter(int localCharacterIndex)
@@ -70,12 +76,14 @@ public class FightAnimator : MonoBehaviour
         DestroyCurrentCharacter();
 
         // Создаем и позиционируем локального персонажа.
-        localCharacter = Instantiate(characterPrefabs[localCharacterIndex], new Vector3(-0.5f, 0, 3), Quaternion.Euler(0, 90, 0));
+        localCharacter = Instantiate(characterPrefabs[localCharacterIndex], new Vector3(-0.5f, 0, 3),
+            Quaternion.Euler(0, 90, 0));
         localAnim = localCharacter.GetComponent<Animator>();
         localCharacter.transform.SetParent(gameObject.transform);
 
         // Создаем и позиционируем удаленного персонажа.
-        remoteCharacter = Instantiate(characterPrefabs[localCharacterIndex ^ 1], new Vector3(0.5f, 0, 3), Quaternion.Euler(0, -90, 0));
+        remoteCharacter = Instantiate(characterPrefabs[localCharacterIndex ^ 1], new Vector3(0.5f, 0, 3),
+            Quaternion.Euler(0, -90, 0));
         remoteAnim = remoteCharacter.GetComponent<Animator>();
         remoteCharacter.transform.SetParent(gameObject.transform);
     }
@@ -92,14 +100,6 @@ public class FightAnimator : MonoBehaviour
         Destroy(remoteCharacter);
     }
 
-    private void Start()
-    {
-    }
-
-    void Update()
-    {
-    }
-
     public void AnimateRound(RoundSpec roundSpec,
         ulong clientId1, int health1, int[] attackScheme1, int[] defenceScheme1,
         ulong clientId2, int health2, int[] attackScheme2, int[] defenceScheme2,
@@ -109,7 +109,13 @@ public class FightAnimator : MonoBehaviour
         Debug.Log($"roundSpec.isLast: {roundSpec.isLast}, number: {roundSpec.roundNumber}");
         Debug.Log($"attackScheme1: {attackScheme1.Length}");
 
-        roundNumberText.GetComponent<TextMeshProUGUI>().text = $"РАУНД: {roundSpec.roundNumber}";
+        // Когда от сервера приходит сигнал начать анимацию, клиент может быть в меню паузы,
+        // в которое он вышел, находясь в режиме подготовки к раунду.
+        // Просто возвращаем его в игру и "заставляем" смотреть анимацию.
+        // Если он вышел в меню паузы и нажал Disconnect, то игра в принципе будет завершена и мы сюда не попадем вовсе.
+        pauseMenu.SetActive(false);
+
+        roundNumberText.GetComponent<TextMeshProUGUI>().text = $"{roundSpec.roundNumber}";
 
         isLastFight = roundSpec.isLast;
 
@@ -146,10 +152,12 @@ public class FightAnimator : MonoBehaviour
         cnt = 2;
 
         if (localIsFirst)
-            StartCoroutine(AnimateLocalAttackFirst(attackSchemeLocal, attackSchemeRemote, defenceSchemeLocal,
+            currentCoroutine = StartCoroutine(AnimateLocalAttackFirst(attackSchemeLocal, attackSchemeRemote,
+                defenceSchemeLocal,
                 defenceSchemeRemote));
         else
-            StartCoroutine(AnimateRemoteAttackFirst(attackSchemeLocal, attackSchemeRemote, defenceSchemeLocal,
+            currentCoroutine = StartCoroutine(AnimateRemoteAttackFirst(attackSchemeLocal, attackSchemeRemote,
+                defenceSchemeLocal,
                 defenceSchemeRemote));
     }
 
@@ -173,7 +181,7 @@ public class FightAnimator : MonoBehaviour
             // Debug.Log($"Has finished attack/defence for {i}\n");
         }
 
-        remoteHPText.GetComponent<TextMeshProUGUI>().text = $"ПРОТИВНИК: {remoteHP}";
+        remoteHPText.GetComponent<TextMeshProUGUI>().text = $"{remoteHP}";
 
         Debug.Log("Animate remote attack");
         for (int i = 0; i < 8; i++)
@@ -190,7 +198,7 @@ public class FightAnimator : MonoBehaviour
             // Debug.Log($"Has finished attack/defence for {i}\n");
         }
 
-        localHPText.GetComponent<TextMeshProUGUI>().text = $"ВЫ: {localHP}";
+        localHPText.GetComponent<TextMeshProUGUI>().text = $"{localHP}";
 
         // Если это не последний раунд,
         // то сообщаем серверу о завершении анимации,
@@ -237,7 +245,7 @@ public class FightAnimator : MonoBehaviour
             // Debug.Log($"Has finished attack/defence for {i}\n");
         }
 
-        localHPText.GetComponent<TextMeshProUGUI>().text = $"ВЫ: {localHP}";
+        localHPText.GetComponent<TextMeshProUGUI>().text = $"{localHP}";
 
         Debug.Log("Animate local attack");
         for (int i = 0; i < 8; i++)
@@ -254,7 +262,7 @@ public class FightAnimator : MonoBehaviour
             // Debug.Log($"Has finished attack/defence for {i}\n");
         }
 
-        remoteHPText.GetComponent<TextMeshProUGUI>().text = $"ПРОТИВНИК: {remoteHP}";
+        remoteHPText.GetComponent<TextMeshProUGUI>().text = $"{remoteHP}";
 
         // Если это не последний раунд,
         // то сообщаем серверу о завершении анимации,
@@ -279,5 +287,15 @@ public class FightAnimator : MonoBehaviour
                 remoteAnim.Play("knockdown_A", 0);
             }
         }
+    }
+
+    public void ResetToDefault()
+    {
+        Debug.Log("FightAnimator.ResetToDefault");
+
+        if (currentCoroutine != null)
+            StopCoroutine(currentCoroutine);
+
+        gameObject.SetActive(false);
     }
 }

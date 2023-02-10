@@ -2,8 +2,11 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class PrepareRoundMenu : MonoBehaviour
+public class PrepareRoundMenu : MonoBehaviour, Resettable
 {
+    [SerializeField] private GameObject menuEscText;
+    [SerializeField] private GameObject pauseMenu;
+
     [SerializeField] public GameObject timerText;
     [SerializeField] public GameObject hud;
     [SerializeField] public GameObject roundNumberText;
@@ -15,6 +18,11 @@ public class PrepareRoundMenu : MonoBehaviour
     [SerializeField] private Sprite[] defenceSprites;
     [SerializeField] private Sprite[] attackSprites;
 
+    [SerializeField] private Texture[] characterSprites;
+
+    [SerializeField] private GameObject defenceContainer;
+    [SerializeField] private GameObject attackContainer;
+
     public int[] attackScheme;
     public int[] defenceScheme;
 
@@ -24,21 +32,38 @@ public class PrepareRoundMenu : MonoBehaviour
     private int currentAttackPoints;
     private int maxAttackPoints = 4;
 
+    public bool madeDecision;
+
     private void OnEnable()
     {
-        Debug.Log("PrepareRoundMenu.OnEnable");
-
+        Debug.Log("PrepareForRoundMenu.OnEnable");
+        
         hud.SetActive(true);
+        pauseMenu.SetActive(false);
         roundNumberText.SetActive(false);
+        menuEscText.SetActive(true);
+
+        int localCharacterIndex = GameObject.Find("Game").GetComponent<Game>().LocalCharacterIndex;
+        defenceContainer.GetComponent<RawImage>().texture = characterSprites[localCharacterIndex];
+        attackContainer.GetComponent<RawImage>().texture = characterSprites[localCharacterIndex ^ 1];
     }
 
-    void Start()
+    private void Start()
     {
-        Debug.Log("PrepareRoundMenu.Start");
+        Debug.Log("PrepareForRoundMenu.Start");
 
+        CreateEmptyFightScheme();
+        InstantiateButtons();
+    }
+
+    private void CreateEmptyFightScheme()
+    {
         attackScheme = new[] {0, 0, 0, 0, 0, 0, 0, 0};
         defenceScheme = new[] {1, 1, 1, 1, 1, 1, 1, 1};
+    }
 
+    private void InstantiateButtons()
+    {
         InstantiateDefenceButtons();
         InstantiateAttackButtons();
     }
@@ -54,6 +79,9 @@ public class PrepareRoundMenu : MonoBehaviour
             int bodyPartIndex = i;
             button.GetComponent<MyButton>().onLeftClick.AddListener(() =>
             {
+                if (madeDecision)
+                    return;
+                
                 // Если блок уже установлен, то пропускаем.
                 if (defenceScheme[bodyPartIndex] == 0)
                     return;
@@ -69,6 +97,9 @@ public class PrepareRoundMenu : MonoBehaviour
 
             button.GetComponent<MyButton>().onRightClick.AddListener(() =>
             {
+                if (madeDecision)
+                    return;
+                
                 if (defenceScheme[bodyPartIndex] == 1)
                     return;
 
@@ -92,7 +123,10 @@ public class PrepareRoundMenu : MonoBehaviour
             button.GetComponent<MyButton>().onLeftClick.AddListener(() =>
             {
                 Debug.Log($"Mouse left click on attack button for: {bodyPartIndex}");
-
+                
+                if (madeDecision)
+                    return;
+                
                 if (currentAttackPoints == maxAttackPoints)
                     return;
 
@@ -107,6 +141,9 @@ public class PrepareRoundMenu : MonoBehaviour
             {
                 Debug.Log($"Mouse right click on attack button for: {bodyPartIndex}");
 
+                if (madeDecision)
+                    return;
+                
                 if (attackScheme[bodyPartIndex] != 0)
                 {
                     attackScheme[bodyPartIndex]--;
@@ -123,5 +160,46 @@ public class PrepareRoundMenu : MonoBehaviour
                 }
             });
         }
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            DeactivateThisMenu();
+            
+            pauseMenu.GetComponent<PauseMenu>().lastMenu = gameObject;
+            pauseMenu.SetActive(true);
+        }
+    }
+
+    private void DeactivateThisMenu()
+    {
+        gameObject.SetActive(false);
+    }
+
+    private void ResetButtons()
+    {
+        foreach (Transform child in defenceButtonsContainer.transform)
+            child.gameObject.GetComponent<Image>().sprite = defenceSprites[1];
+
+        foreach (Transform child in attackButtonsContainer.transform)
+        {
+            child.gameObject.GetComponent<Image>().sprite = attackSprites[0];
+            TextMeshProUGUI text = child.gameObject.GetComponentInChildren(typeof(TextMeshProUGUI)) as TextMeshProUGUI;
+            text.text = "";
+        }
+    }
+
+    public void ResetToDefault()
+    {
+        Debug.Log("PrepareForRoundMenu.ResetToDefault");
+
+        madeDecision = false;
+        currentDefencePoints = currentAttackPoints = 0;
+        CreateEmptyFightScheme();
+        ResetButtons();
+        
+        gameObject.SetActive(false);
     }
 }

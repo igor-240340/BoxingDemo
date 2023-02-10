@@ -1,15 +1,12 @@
 using UnityEngine;
-using UnityEngine.EventSystems;
 
-public class PlayMenu : MonoBehaviour
+public class PlayMenu : MonoBehaviour, Resettable
 {
     [SerializeField] private GameObject mainMenu;
 
     [SerializeField] private GameObject singlePlayMenu;
     [SerializeField] private GameObject hostPlayMenu;
     [SerializeField] private GameObject connectPlayMenu;
-
-    [SerializeField] private GameObject firstButton;
 
     private void OnEnable()
     {
@@ -49,6 +46,11 @@ public class PlayMenu : MonoBehaviour
     }
 
     private void DeactivateThisMenu()
+    {
+        gameObject.SetActive(false);
+    }
+
+    public void ResetToDefault()
     {
         gameObject.SetActive(false);
     }

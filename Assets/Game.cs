@@ -4,12 +4,15 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
 using Random = UnityEngine.Random;
 
-public class NewGame : NetworkBehaviour
+public class Game : NetworkBehaviour, Resettable
 {
     [SerializeField] private GameObject prepareRoundMenu;
     [SerializeField] private GameObject fightAnimator;
+
+    [SerializeField] private GameObject gameObjectManager;
 
     public struct Player : INetworkSerializeByMemcpy
     {
@@ -18,7 +21,7 @@ public class NewGame : NetworkBehaviour
         public int[] defenceScheme;
         public int health;
 
-        public Player(ulong clientId, int[] attackScheme, int[] defenceScheme, int health = 100)
+        public Player(ulong clientId, int[] attackScheme, int[] defenceScheme, int health = 20)
         {
             this.clientId = clientId;
             this.attackScheme = attackScheme;
@@ -40,22 +43,17 @@ public class NewGame : NetworkBehaviour
 
     private int currentRoundNumber = 1;
 
-    private int
-        localCharacterIndex =
-            -1; // Определяет индекс, по которому хостовый и обычный клиенты берут модели своих персонажей.
+    // Определяет индекс, по которому хостовый и обычный клиенты берут модели своих персонажей.
+    private int localCharacterIndex = -1;
 
-    void Start()
-    {
-    }
-
-    void Update()
+    private void Update()
     {
         if (prepTimerIsActive)
         {
             elapsedSeconds += Time.deltaTime;
             leftSeconds = timerMaxSeconds - elapsedSeconds;
 
-            Debug.Log($"NewGame.Update elapsedSeconds: {elapsedSeconds}, leftSeconds: {leftSeconds}");
+            Debug.Log($"Game.Update elapsedSeconds: {elapsedSeconds}, leftSeconds: {leftSeconds}");
 
             prepareRoundMenu.GetComponent<PrepareRoundMenu>().timerText.GetComponent<TextMeshProUGUI>().text =
                 $"00:{(int) leftSeconds}";
@@ -70,12 +68,12 @@ public class NewGame : NetworkBehaviour
 
     public void StartAsHost(Action<bool> cb)
     {
-        Debug.Log("NewGame.StartAsHost");
+        Debug.Log("Game.StartAsHost");
 
         NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
         NetworkManager.Singleton.OnClientConnectedCallback += clientId =>
         {
-            Debug.Log("NewGame.OnClientConnectedOnHost");
+            Debug.Log("Game.OnClientConnectedOnHost");
 
             if (NetworkManager.Singleton.LocalClientId != clientId)
             {
@@ -85,30 +83,67 @@ public class NewGame : NetworkBehaviour
                 PrepareForRoundClientRpc(localCharacterIndex);
             }
         };
+        // Вызывается, когда отключается хостовый или удаленный клиент.
+        // Просто закрываем сервер и возвращаемся в исходное состояние.
+        NetworkManager.Singleton.OnClientDisconnectCallback += clientId =>
+        {
+            Debug.Log($"Game.OnClientDisconnectCallback. IsHost: {IsHost}}}");
+            Disconnect();
+        };
+
         NetworkManager.Singleton.StartHost();
     }
 
-    public void StopHost()
+    public void StartAsClient(string ip, string port, Action<bool, string> cb)
     {
-        Debug.Log("NewGame.StopHost");
+        Debug.Log("Game.StartAsClient");
+
+        NetworkManager.Singleton.GetComponent<UnityTransport>().SetConnectionData(ip, (ushort) Int32.Parse(port));
+
+        NetworkManager.Singleton.OnClientDisconnectCallback += clientId =>
+        {
+            Debug.Log(
+                $"Game.OnClientDisconnectCallback. IsHost: {IsHost}, clientId: {clientId}, DisconnectReason: {NetworkManager.Singleton.DisconnectReason}");
+
+            gameObjectManager.GetComponent<GameObjectManager>().ResetToDefault();
+            ResetToDefault();
+
+            cb(false, NetworkManager.Singleton.DisconnectReason);
+        };
+        NetworkManager.Singleton.OnClientConnectedCallback += clientId =>
+        {
+            Debug.Log($"Game.OnClientConnectedCallback. IsHost: {IsHost}, clientId: {clientId}");
+            cb(true, "");
+        };
+        NetworkManager.Singleton.StartClient();
+    }
+
+    public void Disconnect(bool resetGameObjects = true)
+    {
+        Debug.Log("Game.Disconnect");
+
         NetworkManager.Singleton.Shutdown();
+
+        if (resetGameObjects)
+            gameObjectManager.GetComponent<GameObjectManager>().ResetToDefault();
     }
 
     [ClientRpc]
     private void PrepareForRoundClientRpc(int hostCharacterIndex = default)
     {
         Debug.Log(
-            $"NewGame.PrepareForRoundClientRpc. clientId: {NetworkManager.Singleton.LocalClientId}, IsLocal: {IsLocalPlayer}");
+            $"Game.PrepareForRoundClientRpc. clientId: {NetworkManager.Singleton.LocalClientId}, IsLocal: {IsLocalPlayer}");
 
         // Не хостовый клиент при первом вызове должен выбрать себе персонажа, противоположного хостовому.
         // Если это хостовый клиент, то индекс у него уже инициализирован при создании игры.
-        if (!IsHost && localCharacterIndex == -1)
+        if (!IsHost && localCharacterIndex != hostCharacterIndex)
         {
             localCharacterIndex = hostCharacterIndex ^ 1;
             fightAnimator.GetComponent<FightAnimator>().InitCharacter(localCharacterIndex);
         }
 
         fightAnimator.SetActive(false);
+        prepareRoundMenu.GetComponent<PrepareRoundMenu>().madeDecision = false;
         prepareRoundMenu.SetActive(true);
 
         StartPrepTimer();
@@ -116,7 +151,7 @@ public class NewGame : NetworkBehaviour
 
     private void StartPrepTimer()
     {
-        Debug.Log($"NewGame.StartPrepTimer. IsHost: {IsHost}");
+        Debug.Log($"Game.StartPrepTimer. IsHost: {IsHost}");
 
         elapsedSeconds = leftSeconds = 0;
         prepTimerIsActive = true;
@@ -124,12 +159,13 @@ public class NewGame : NetworkBehaviour
 
     private void StopPrepTimer()
     {
-        Debug.Log($"NewGame.StopPrepTimer. IsHost: {IsHost}");
+        Debug.Log($"Game.StopPrepTimer. IsHost: {IsHost}");
 
         prepTimerIsActive = false;
         prepareRoundMenu.GetComponent<PrepareRoundMenu>().timerText.GetComponent<TextMeshProUGUI>().text =
             "00:00";
 
+        prepareRoundMenu.GetComponent<PrepareRoundMenu>().madeDecision = true;
         var attackScheme = prepareRoundMenu.GetComponent<PrepareRoundMenu>().attackScheme;
         var defenceScheme = prepareRoundMenu.GetComponent<PrepareRoundMenu>().defenceScheme;
         ReadyForRoundServerRpc(attackScheme, defenceScheme);
@@ -140,7 +176,7 @@ public class NewGame : NetworkBehaviour
         ServerRpcParams serverRpcParams = default)
     {
         ulong clientId = serverRpcParams.Receive.SenderClientId;
-        Debug.Log($"NewGame.ReadyForFight. IsLocalClient: {NetworkManager.Singleton.LocalClientId == clientId}");
+        Debug.Log($"Game.ReadyForFight. IsLocalClient: {NetworkManager.Singleton.LocalClientId == clientId}");
         Debug.Log(
             $"attackScheme: {string.Join(string.Empty, attackScheme)}, defenceScheme: {string.Join(string.Empty, defenceScheme)}");
 
@@ -153,7 +189,7 @@ public class NewGame : NetworkBehaviour
         {
             readyForRoundCnt = 0;
 
-            Debug.Log("NewGame.ReadyForFight. Both clients are ready for fight");
+            Debug.Log("Game.ReadyForFight. Both clients are ready for fight");
 
             // Хост заранее просчитывает исход раунда и передает результаты клиентам для анимации.
             RoundSpec roundSpec = CalculateRound();
@@ -165,7 +201,7 @@ public class NewGame : NetworkBehaviour
 
     private RoundSpec CalculateRound()
     {
-        Debug.Log($"NewGame.CalculateRound. IsHost: {IsHost}");
+        Debug.Log($"Game.CalculateRound. IsHost: {IsHost}");
 
         Player[] ps = players.Values.ToArray();
 
@@ -198,7 +234,7 @@ public class NewGame : NetworkBehaviour
         ulong clientId1, int health1, int[] attackScheme1, int[] defenceScheme1,
         ulong clientId2, int health2, int[] attackScheme2, int[] defenceScheme2)
     {
-        Debug.Log($"NewGame.AnimateRoundClientRpc. IsHost: {IsHost}");
+        Debug.Log($"Game.AnimateRoundClientRpc. IsHost: {IsHost}");
 
         prepareRoundMenu.SetActive(false);
         fightAnimator.SetActive(true);
@@ -211,7 +247,7 @@ public class NewGame : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     private void OnAnimationCompleteServerRpc()
     {
-        Debug.Log($"NewGame.OnAnimationCompleteServerRpc.");
+        Debug.Log($"Game.OnAnimationCompleteServerRpc.");
 
         if (++animationCompleteCnt == 2)
         {
@@ -233,25 +269,6 @@ public class NewGame : NetworkBehaviour
         }
         else
             response.Approved = true;
-    }
-
-    public void StartAsClient(Action<bool, string> cb)
-    {
-        Debug.Log("NewGame.StartAsClient");
-
-        NetworkManager.Singleton.OnClientDisconnectCallback += clientId =>
-        {
-            Debug.Log(
-                $"NewGame.OnClientDisconnectCallback on client. clientId: {clientId}, DisconnectReason: {NetworkManager.Singleton.DisconnectReason}");
-
-            cb(false, NetworkManager.Singleton.DisconnectReason);
-        };
-        NetworkManager.Singleton.OnClientConnectedCallback += clientId =>
-        {
-            Debug.Log($"NewGame.OnClientConnectedCallback on client. clientId: {clientId}");
-            cb(true, "");
-        };
-        NetworkManager.Singleton.StartClient();
     }
 
     private int[] CreateRandomAttackScheme()
@@ -287,5 +304,19 @@ public class NewGame : NetworkBehaviour
             localCharacterIndex = value;
             fightAnimator.GetComponent<FightAnimator>().InitCharacter(localCharacterIndex);
         }
+        get { return localCharacterIndex; }
+    }
+
+    public void ResetToDefault()
+    {
+        players?.Clear();
+
+        readyForRoundCnt = animationCompleteCnt = 0;
+
+        currentRoundNumber = 1;
+        localCharacterIndex = -1;
+
+        elapsedSeconds = leftSeconds = 0;
+        prepTimerIsActive = false;
     }
 }
