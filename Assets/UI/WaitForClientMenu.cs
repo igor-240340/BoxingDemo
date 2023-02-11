@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class WaitForClientMenu : MonoBehaviour, Resettable
 {
-    [SerializeField] private GameObject hostPlayMenu;
+    [SerializeField] private GameObject playMenu;
 
     private void OnEnable()
     {
@@ -17,7 +17,7 @@ public class WaitForClientMenu : MonoBehaviour, Resettable
         GameObject.Find("Game").GetComponent<Game>().Disconnect(false);
 
         DeactivateThisMenu();
-        hostPlayMenu.SetActive(true);
+        playMenu.SetActive(true);
     }
 
     private void DeactivateThisMenu()

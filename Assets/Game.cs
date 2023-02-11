@@ -42,10 +42,7 @@ public class Game : NetworkBehaviour, Resettable
     private int animationCompleteCnt;
 
     private int currentRoundNumber = 1;
-
-    // Определяет индекс, по которому хостовый и обычный клиенты берут модели своих персонажей.
-    private int localCharacterIndex = -1;
-
+    
     private void Update()
     {
         if (prepTimerIsActive)
@@ -55,7 +52,7 @@ public class Game : NetworkBehaviour, Resettable
 
             Debug.Log($"Game.Update elapsedSeconds: {elapsedSeconds}, leftSeconds: {leftSeconds}");
 
-            prepareRoundMenu.GetComponent<PrepareRoundMenu>().timerText.GetComponent<TextMeshProUGUI>().text =
+            prepareRoundMenu.GetComponent<PrepareForRoundMenu>().timerText.GetComponent<TextMeshProUGUI>().text =
                 $"00:{(int) leftSeconds}";
 
             if (leftSeconds <= 0)
@@ -80,7 +77,7 @@ public class Game : NetworkBehaviour, Resettable
                 Debug.Log("Both clients has connected.");
 
                 cb(true);
-                PrepareForRoundClientRpc(localCharacterIndex);
+                PrepareForRoundClientRpc();
             }
         };
         // Вызывается, когда отключается хостовый или удаленный клиент.
@@ -129,21 +126,13 @@ public class Game : NetworkBehaviour, Resettable
     }
 
     [ClientRpc]
-    private void PrepareForRoundClientRpc(int hostCharacterIndex = default)
+    private void PrepareForRoundClientRpc()
     {
         Debug.Log(
             $"Game.PrepareForRoundClientRpc. clientId: {NetworkManager.Singleton.LocalClientId}, IsLocal: {IsLocalPlayer}");
-
-        // Не хостовый клиент при первом вызове должен выбрать себе персонажа, противоположного хостовому.
-        // Если это хостовый клиент, то индекс у него уже инициализирован при создании игры.
-        if (!IsHost && localCharacterIndex != hostCharacterIndex)
-        {
-            localCharacterIndex = hostCharacterIndex ^ 1;
-            fightAnimator.GetComponent<FightAnimator>().InitCharacter(localCharacterIndex);
-        }
-
+        
         fightAnimator.SetActive(false);
-        prepareRoundMenu.GetComponent<PrepareRoundMenu>().madeDecision = false;
+        prepareRoundMenu.GetComponent<PrepareForRoundMenu>().madeDecision = false;
         prepareRoundMenu.SetActive(true);
 
         StartPrepTimer();
@@ -162,12 +151,12 @@ public class Game : NetworkBehaviour, Resettable
         Debug.Log($"Game.StopPrepTimer. IsHost: {IsHost}");
 
         prepTimerIsActive = false;
-        prepareRoundMenu.GetComponent<PrepareRoundMenu>().timerText.GetComponent<TextMeshProUGUI>().text =
+        prepareRoundMenu.GetComponent<PrepareForRoundMenu>().timerText.GetComponent<TextMeshProUGUI>().text =
             "00:00";
 
-        prepareRoundMenu.GetComponent<PrepareRoundMenu>().madeDecision = true;
-        var attackScheme = prepareRoundMenu.GetComponent<PrepareRoundMenu>().attackScheme;
-        var defenceScheme = prepareRoundMenu.GetComponent<PrepareRoundMenu>().defenceScheme;
+        prepareRoundMenu.GetComponent<PrepareForRoundMenu>().madeDecision = true;
+        var attackScheme = prepareRoundMenu.GetComponent<PrepareForRoundMenu>().attackScheme;
+        var defenceScheme = prepareRoundMenu.GetComponent<PrepareForRoundMenu>().defenceScheme;
         ReadyForRoundServerRpc(attackScheme, defenceScheme);
     }
 
@@ -271,6 +260,18 @@ public class Game : NetworkBehaviour, Resettable
             response.Approved = true;
     }
 
+    public void ResetToDefault()
+    {
+        players?.Clear();
+
+        readyForRoundCnt = animationCompleteCnt = 0;
+
+        currentRoundNumber = 1;
+
+        elapsedSeconds = leftSeconds = 0;
+        prepTimerIsActive = false;
+    }
+    
     private int[] CreateRandomAttackScheme()
     {
         int[] attackScheme = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -295,28 +296,5 @@ public class Game : NetworkBehaviour, Resettable
         }
 
         return defenceScheme;
-    }
-
-    public int LocalCharacterIndex
-    {
-        set
-        {
-            localCharacterIndex = value;
-            fightAnimator.GetComponent<FightAnimator>().InitCharacter(localCharacterIndex);
-        }
-        get { return localCharacterIndex; }
-    }
-
-    public void ResetToDefault()
-    {
-        players?.Clear();
-
-        readyForRoundCnt = animationCompleteCnt = 0;
-
-        currentRoundNumber = 1;
-        localCharacterIndex = -1;
-
-        elapsedSeconds = leftSeconds = 0;
-        prepTimerIsActive = false;
     }
 }

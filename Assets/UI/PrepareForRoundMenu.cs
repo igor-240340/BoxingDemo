@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class PrepareRoundMenu : MonoBehaviour, Resettable
+public class PrepareForRoundMenu : MonoBehaviour, Resettable
 {
     [SerializeField] private GameObject menuEscText;
     [SerializeField] private GameObject pauseMenu;
@@ -18,7 +18,7 @@ public class PrepareRoundMenu : MonoBehaviour, Resettable
     [SerializeField] private Sprite[] defenceSprites;
     [SerializeField] private Sprite[] attackSprites;
 
-    [SerializeField] private Texture[] characterSprites;
+    [SerializeField] private Texture[] characterImages;
 
     [SerializeField] private GameObject defenceContainer;
     [SerializeField] private GameObject attackContainer;
@@ -37,15 +37,14 @@ public class PrepareRoundMenu : MonoBehaviour, Resettable
     private void OnEnable()
     {
         Debug.Log("PrepareForRoundMenu.OnEnable");
-        
+
         hud.SetActive(true);
         pauseMenu.SetActive(false);
         roundNumberText.SetActive(false);
         menuEscText.SetActive(true);
 
-        int localCharacterIndex = GameObject.Find("Game").GetComponent<Game>().LocalCharacterIndex;
-        defenceContainer.GetComponent<RawImage>().texture = characterSprites[localCharacterIndex];
-        attackContainer.GetComponent<RawImage>().texture = characterSprites[localCharacterIndex ^ 1];
+        defenceContainer.GetComponent<RawImage>().texture = characterImages[0];
+        attackContainer.GetComponent<RawImage>().texture = characterImages[1];
     }
 
     private void Start()
@@ -81,7 +80,7 @@ public class PrepareRoundMenu : MonoBehaviour, Resettable
             {
                 if (madeDecision)
                     return;
-                
+
                 // Если блок уже установлен, то пропускаем.
                 if (defenceScheme[bodyPartIndex] == 0)
                     return;
@@ -99,7 +98,7 @@ public class PrepareRoundMenu : MonoBehaviour, Resettable
             {
                 if (madeDecision)
                     return;
-                
+
                 if (defenceScheme[bodyPartIndex] == 1)
                     return;
 
@@ -123,10 +122,10 @@ public class PrepareRoundMenu : MonoBehaviour, Resettable
             button.GetComponent<MyButton>().onLeftClick.AddListener(() =>
             {
                 Debug.Log($"Mouse left click on attack button for: {bodyPartIndex}");
-                
+
                 if (madeDecision)
                     return;
-                
+
                 if (currentAttackPoints == maxAttackPoints)
                     return;
 
@@ -143,7 +142,7 @@ public class PrepareRoundMenu : MonoBehaviour, Resettable
 
                 if (madeDecision)
                     return;
-                
+
                 if (attackScheme[bodyPartIndex] != 0)
                 {
                     attackScheme[bodyPartIndex]--;
@@ -167,7 +166,7 @@ public class PrepareRoundMenu : MonoBehaviour, Resettable
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             DeactivateThisMenu();
-            
+
             pauseMenu.GetComponent<PauseMenu>().lastMenu = gameObject;
             pauseMenu.SetActive(true);
         }
@@ -199,7 +198,7 @@ public class PrepareRoundMenu : MonoBehaviour, Resettable
         currentDefencePoints = currentAttackPoints = 0;
         CreateEmptyFightScheme();
         ResetButtons();
-        
+
         gameObject.SetActive(false);
     }
 }

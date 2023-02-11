@@ -5,7 +5,7 @@ public class PlayMenu : MonoBehaviour, Resettable
     [SerializeField] private GameObject mainMenu;
 
     [SerializeField] private GameObject singlePlayMenu;
-    [SerializeField] private GameObject hostPlayMenu;
+    [SerializeField] private GameObject waitForClientMenu;
     [SerializeField] private GameObject connectPlayMenu;
 
     private void OnEnable()
@@ -21,16 +21,14 @@ public class PlayMenu : MonoBehaviour, Resettable
     {
     }
 
-    public void OnSingleButtonClick()
+    public void OnSinglePlayButtonClick()
     {
-        DeactivateThisMenu();
-        singlePlayMenu.SetActive(true);
     }
 
     public void OnHostButtonClick()
     {
         DeactivateThisMenu();
-        hostPlayMenu.SetActive(true);
+        waitForClientMenu.SetActive(true);
     }
 
     public void OnConnectButtonClick()
