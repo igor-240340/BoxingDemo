@@ -1,4 +1,6 @@
-# BoxingDemo with multiplayer.
+# BoxingDemo.
+
+Turn-based boxing simulator with multiplayer.
 
 ![](docs/1.png)
 ![](docs/2.png)
